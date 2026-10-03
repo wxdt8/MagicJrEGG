@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>角色契合度测试</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f7fa;
+      color: #333;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      max-width: 600px;
+      width: 100%;
+      padding: 32px 24px;
+      position: relative;
+    }
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      color: #1a1a1a;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 14px;
+      text-align: center;
+      color: #666;
+      margin-bottom: 24px;
+    }
+    .progress-bar {
+      height: 6px;
+      background-color: #edf2f7;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+    .progress-inner {
+      height: 100%;
+      width: 0%;
+      background-color: #4a90e2;
+      transition: width 0.3s ease;
+    }
+    .question-box {
+      margin-bottom: 24px;
+    }
+    .question-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      line-height: 1.4;
+      color: #2c3e50;
+    }
+    .options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .option-btn {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 15px;
+      color: #334155;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+    .option-btn:hover {
+      background-color: #ebf8ff;
+      border-color: #3182ce;
+      color: #2b6cb0;
+    }
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24px;
+    }
+    .nav-btn {
+      background-color: #edf2f7;
+      color: #4a5568;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    .nav-btn:hover {
+      background-color: #e2e8f0;
+    }
+    .nav-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+  /* 蛋与头像容器：改成响应式宽高，彻底解决手机端错位 */
+.egg-container {
+  position: relative;
+  width: 100%;             /* 手机端自动撑满 */
+  max-width: 429px;        /* 限制最大宽度为原来的 429px */
+  margin: 20px auto 10px;
+  /* 移除固定高度和 flex，改由内部的蛋壳图片自然撑开高度 */
+}
+
+/* 1. 底层：角色头像（保留你的原始参数：54.5% / 48%） */
+.hatched-avatar-wrapper {
+  position: absolute;
+  top: 54.5%; 
+  left: 48%;
+  transform: translate(-50%, -50%);
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  background-color: #f7fafc;
+  z-index: 1; /* 底层 */
+}
+
+.hatched-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 2. 顶层：蛋壳图片（作为基准垫片撑开父容器） */
+.egg-bg-img {
+  display: block;          /* 确保图片成为块级元素撑开容器 */
+  width: 100%;
+  height: auto;            /* 保持蛋壳原始宽高比，不拉伸 */
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.15));
+  z-index: 2;              /* 顶层：覆盖在头像上方 */
+  pointer-events: none;
+}
+
+
+    /* 页面基础切换控制 */
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    /* 成员信息文本 */
+    .top-member-info {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .match-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #ff7e5f, #feb47b);
+      color: white;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .top-member-name {
+      font-size: 24px;
+      color: #2d3748;
+      margin: 6px 0;
+    }
+
+    /* 链接与预览区 */
+    .member-links-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 340px;
+      margin: 0 auto 24px;
+    }
+
+    .profile-btn {
+      display: block;
+      text-align: center;
+      background-color: #4a5568;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .profile-btn:hover {
+      background-color: #2d3748;
+      transform: translateY(-2px);
+    }
+
+    /* TikTok 预览卡片 */
+    .tiktok-preview-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border: 1px solid #edf2f7;
+    }
+
+    .preview-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #718096;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .tiktok-embed-wrapper {
+      display: flex;
+      justify-content: center;
+      min-height: 150px;
+    }
+
+    .ranking-list {
+      text-align: left;
+      background-color: #f7fafc;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+    .ranking-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px dashed #e2e8f0;
+      font-size: 15px;
+    }
+    .ranking-item:last-child {
+      border-bottom: none;
+    }
+    .ranking-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-right: 8px;
+    }
+    .restart-btn {
+      background-color: #3182ce;
+      color: white;
+      border: none;
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      width: 100%;
+    }
+    .restart-btn:hover {
+      background-color: #2b6cb0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="title">角色契合度测试</div>
+    <div class="subtitle">回答12道性格偏好题，寻找最与你契合的角色！</div>
+
+    <!-- 答题页面区域 -->
+    <div id="quiz-page" class="page active">
+      <div class="progress-bar" id="progress-bar">
+        <div class="progress-inner" id="progress-inner"></div>
+      </div>
+
+      <div id="quiz-container">
+        <div class="question-box">
+          <div class="question-title" id="question-title">题目加载中...</div>
+          <div class="options-list" id="options-list"></div>
+        </div>
+        <div class="btn-group">
+          <button class="nav-btn" id="prev-btn" onclick="prevQuestion()" disabled>上一题</button>
+          <span id="question-count" style="align-self: center; font-size: 14px; color: #a0aec0;">1 / 12</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 结果展示区域 -->
+    <div id="result-page" class="page">
+      <h2 style="text-align: center; font-size: 20px;" class="result-title">✨ 恭喜你孵化出了—— ✨</h2>
+
+     <!-- 魔法蛋孵化容器（两层结构：底图头像 + 顶层蛋壳） -->
+<div class="egg-container">
+  <!-- 1. 底层：角色头像 -->
+  <div class="hatched-avatar-wrapper">
+    < img id="top-avatar" src="" alt="最高匹配成员" class="hatched-avatar" onerror="this.style.display='none'">
+  </div>
+
+  <!-- 2. 顶层：魔法蛋壳（破口处需为透明 PNG） -->
+  < img src="images/egg.png" alt="魔法蛋" class="egg-bg-img">
+</div>
+
+
+      <!-- 最高匹配成员信息 -->
+      <div class="top-member-info">
+        <div class="match-badge">契合度 <span id="top-percentage">0</span>%</div>
+        <h3 id="top-name" class="top-member-name">成员名字</h3>
+      </div>
+
+      <!-- 链接与预览区 -->
+      <div class="member-links-section">
+        <a id="profile-link" href="#" target="_blank" rel="noopener noreferrer" class="action-btn profile-btn">
+          📖 查看完整个人资料
+        </a>
+
+        <div class="tiktok-preview-card">
+          <div class="preview-title">🎵 推荐 TikTok 动态</div>
+          <div id="tiktok-embed-container" class="tiktok-embed-wrapper">
+            <!-- JS 动态插入 TikTok 视频 -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TOP 5 榜单 -->
+      <div id="ranking-list" class="ranking-list"></div>
+
+      <!-- 重新测试按钮 -->
+      <button class="nav-btn restart-btn" onclick="restartQuiz()">🔄 重新孵化</button>
+    </div>
+  </div>
+
+  <script>
+    // 角色数据库
+    const charactersData = [
+      { "姓名": "久保廉", "region": 1, "season": 2, "const": 3, "interest": "1,3", "specialty": "4,5", "dream": 2, "charm": 3, "island": 1, "magic": 1, "job": 1,  "profileUrl": "https://jr-official.starto.jp/s/jr/persons/124?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "田村海琉", "region": 1, "season": 2, "const": 3, "interest": "1,5", "specialty": "1,5", "dream": 1, "charm": 1, "island": 5, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/165?ima=5318", "tiktokVideoId": ""},
+      { "姓名": "千井野空翔", "region": 1, "season": 4, "const": 2, "interest": "3,4", "specialty": 4, "dream": 5, "charm": 3, "island": 5, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/218?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "阿達慶", "region": 1, "season": 3, "const": 3, "interest": "1,2", "specialty": 1, "dream": 2, "charm": 2, "island": 3, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/221?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "岡橋亮汰", "region": 1, "season": 1, "const": 2, "interest": "1,4", "specialty": "1,2", "dream": 2, "charm": 5, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/257?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "関翔馬", "region": 1, "season": 1, "const": 1, "interest": 3, "specialty": 4, "dream": 2, "charm": 2, "island": 4, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/230?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "竹村実悟", "region": 1, "season": 3, "const": 1, "interest": "1,3", "specialty": "1,5", "dream": 2, "charm": 1, "island": 5, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/234?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "田仲陽成", "region": 1, "season": 3, "const": 2, "interest": "1,4", "specialty": "1,4", "dream": 1, "charm": 1, "island": 5, "magic": 4, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/235?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "羽村仁成", "region": 1, "season": 2, "const": 1, "interest": 1, "specialty": 1, "dream": 1, "charm": 2, "island": 5, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/238?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "堀口由翔", "region": 1, "season": 3, "const": 2, "interest": "3,4", "specialty": "1,5", "dream": 5, "charm": 1, "island": 1, "magic": 2, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/239?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "松浦銀志", "region": 1, "season": 1, "const": 2, "interest": "2,3", "specialty": 1, "dream": 1, "charm": 2, "island": 2, "magic": 1, "job": 4, "profileUrl": "", "tiktokVideoId": "https://jr-official.starto.jp/s/jr/persons/240?ima=5318" },
+      { "姓名": "岸蒼太", "region": 1, "season": 3, "const": 3, "interest": "3,5", "specialty": "1,5", "dream": 3, "charm": 4, "island": 1, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/259?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "鍋田大成", "region": 2, "season": 3, "const": 3, "interest": "1,3", "specialty": 4, "dream": 1, "charm": 1, "island": 5, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/258?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "壹岐碧", "region": 1, "season": 1, "const": 3, "interest": 2, "specialty": 5, "dream": 1, "charm": 1, "island": 5, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/302?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "大田蒼空", "region": 2, "season": 4, "const": 2, "interest": "2,4", "specialty": "1,4", "dream": 2, "charm": 1, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/330?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "岡田耕明", "region": 2, "season": 3, "const": 2, "interest": "1,3", "specialty": 1, "dream": 3, "charm": 2, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/332?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "北野快浬", "region": 2, "season": 3, "const": 3, "interest": "1,3", "specialty": 1, "dream": 2, "charm": 1, "island": 5, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/328?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "小久保向一朗", "region": 1, "season": 1, "const": 4, "interest": "2,3", "specialty": "1,4", "dream": 1, "charm": 2, "island": 4, "magic": 3, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/308?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "小山十輝", "region": 1, "season": 2, "const": 4, "interest": 1, "specialty": 1, "dream": 1, "charm": 2, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/310?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "末永光", "region": 3, "season": 2, "const": 1, "interest": "3,4", "specialty": 2, "dream": 1, "charm": 1, "island": 4, "magic": 1, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/304?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "鈴木瑛朝", "region": 1, "season": 3, "const": 2, "interest": "1,2", "specialty": "1,3", "dream": 1, "charm": 3, "island": 2, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/301?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "高橋奏琉", "region": 1, "season": 3, "const": 3, "interest": "1,2", "specialty": 1, "dream": 3, "charm": 2, "island": 1, "magic": 1, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/306?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "林田芯", "region": 1, "season": 1, "const": 2, "interest": "2,4", "specialty": "1,4", "dream": 1, "charm": 1, "island": 3, "magic": 3, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/307?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "渡辺惟良", "region": 1, "season": 1, "const": 4, "interest": "1,3", "specialty": 5, "dream": 5, "charm": 1, "island": 4, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/303?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "渡邉大我", "region": 2, "season": 2, "const": 3, "interest": "1,3", "specialty": "4,5", "dream": 4, "charm": 1, "island": 4, "magic": 2, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/331?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "小尾颯", "region": 2, "season": 3, "const": 2, "interest": "1,5", "specialty": "1,3", "dream": 3, "charm": 1, "island": 4, "magic": 3, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/333?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "アンダーソンフェニックス", "region": 1, "season": 1, "const": 1, "interest": "3,5", "specialty": "4,5", "dream": 3, "charm": 2, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/337?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "井上蒼生", "region": 2, "season": 1, "const": 2, "interest": "1,5", "specialty": 5, "dream": 1, "charm": 1, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/391?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "岩崎楓士", "region": 1, "season": 3, "const": 2, "interest": "4,5", "specialty": 5, "dream": 1, "charm": 2, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/338?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "内田煌音", "region": 1, "season": 2, "const": 4, "interest": "1,5", "specialty": "3,5", "dream": 1, "charm": 2, "island": 4, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/339?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "岡夢人", "region": 2, "season": 2, "const": 1, "interest": "1,5", "specialty": 4, "dream": 1, "charm": 2, "island": 1, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/359?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "岡野すこやか", "region": 2, "season": 1, "const": 1, "interest": "1,4", "specialty": "1,3", "dream": 1, "charm": 2, "island": 5, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/378?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "亀井碧空", "region": 2, "season": 4, "const": 2, "interest": "2,4", "specialty": "1,2", "dream": 1, "charm": 1, "island": 4, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/383?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "川口拓馬", "region": 2, "season": 3, "const": 1, "interest": "1,2", "specialty": "1,3", "dream": 3, "charm": 1, "island": 5, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/385?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "笹田陽之介", "region": 2, "season": 3, "const": 4, "interest": "1,2", "specialty": "1,5", "dream": 1, "charm": 3, "island": 5, "magic": 5, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/384?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "佐野斗真", "region": 1, "season": 3, "const": 3, "interest": "1,3", "specialty": 1, "dream": 1, "charm": 2, "island": 5, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/341?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "塩山直太朗", "region": 2, "season": 4, "const": 1, "interest": "1,5", "specialty": 1, "dream": 2, "charm": 1, "island": 4, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/381?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "新宮楓真", "region": 1, "season": 4, "const": 4, "interest": "1,3", "specialty": "1,4", "dream": 1, "charm": 5, "island": 5, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/342?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "瀬川嵐太", "region": 2, "season": 2, "const": 3, "interest": "1,3", "specialty": "4,5", "dream": 2, "charm": 5, "island": 5, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/380?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "善如寺來", "region": 5, "season": 2, "const": 4, "interest": 5, "specialty": 4, "dream": 5, "charm": 3, "island": 5, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/343?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "染谷樹", "region": 1, "season": 4, "const": 2, "interest": "1,4", "specialty": 3, "dream": 1, "charm": 2, "island": 5, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/344?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "高橋礼", "region": 1, "season": 3, "const": 4, "interest": 1, "specialty": "1,4", "dream": 1, "charm": 1, "island": 5, "magic": 2, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/345?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "田﨑駿斗", "region": 2, "season": 3, "const": 2, "interest": 3, "specialty": 4, "dream": 2, "charm": 2, "island": 5, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/365?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "田代海瑠", "region": 1, "season": 3, "const": 3, "interest": "1,5", "specialty": "4,5", "dream": 1, "charm": 3, "island": 2, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/346?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "谷口尊星", "region": 2, "season": 1, "const": 4, "interest": "1,3", "specialty": "4,5", "dream": 1, "charm": 2, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/377?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "デービスジョシュ", "region": 2, "season": 3, "const": 4, "interest": "1,5", "specialty": 5, "dream": 1, "charm": 2, "island": 5, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/370?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "中川亜音", "region": 2, "season": 1, "const": 2, "interest": "1,2", "specialty": "1,4", "dream": 1, "charm": 1, "island": 3, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/376?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "中崎結翔", "region": 2, "season": 3, "const": 1, "interest": "1,4", "specialty": 1, "dream": 1, "charm": 1, "island": 1, "magic": 4, "job": 5, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/388?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "仲田慎平", "region": 2, "season": 4, "const": 4, "interest": "1,2", "specialty": "1,5", "dream": 3, "charm": 2, "island": 5, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/362?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "中本輝", "region": 5, "season": 4, "const": 3, "interest": "1,3", "specialty": "4,5", "dream": 1, "charm": 3, "island": 5, "magic": 5, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/382?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "西中秀太", "region": 1, "season": 2, "const": 2, "interest": 3, "specialty": 3, "dream": 1, "charm": 2, "island": 4, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/348?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "西野統真", "region": 2, "season": 1, "const": 4, "interest": "1,3", "specialty": "1,2", "dream": 3, "charm": 1, "island": 1, "magic": 2, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/393?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "西野湊人", "region": 4, "season": 3, "const": 2, "interest": "1,3", "specialty": "3,4", "dream": 2, "charm": 2, "island": 5, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/364?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "西巻染", "region": 1, "season": 3, "const": 1, "interest": 2, "specialty": "1,5", "dream": 1, "charm": 2, "island": 1, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/349?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "野田開仁", "region": 2, "season": 3, "const": 2, "interest": "1,3", "specialty": 4, "dream": 1, "charm": 5, "island": 5, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/396?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "野母一晟", "region": 2, "season": 2, "const": 4, "interest": "3,5", "specialty": "1,4", "dream": 1, "charm": 2, "island": 4, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/397?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "伯井太陽", "region": 2, "season": 4, "const": 3, "interest": "1,4", "specialty": "2,5", "dream": 1, "charm": 1, "island": 5, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/386?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "橋本誠吾", "region": 5, "season": 3, "const": 3, "interest": 3, "specialty": "4,5", "dream": 3, "charm": 2, "island": 5, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/372?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "馬場律樹", "region": 1, "season": 2, "const": 3, "interest": 3, "specialty": "1,4", "dream": 2, "charm": 2, "island": 5, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/350?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "濱出顕斗", "region": 2, "season": 3, "const": 2, "interest": 5, "specialty": 5, "dream": 2, "charm": 1, "island": 5, "magic": 3, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/390?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "平田光寛", "region": 1, "season": 2, "const": 4, "interest": "1,3", "specialty": 4, "dream": 2, "charm": 1, "island": 5, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/352?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "藤田真暢", "region": 5, "season": 2, "const": 4, "interest": "1,3", "specialty": "4,5", "dream": 1, "charm": 1, "island": 1, "magic": 1, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/395?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "藤本有惺", "region": 2, "season": 4, "const": 3, "interest": "1,5", "specialty": "1,4", "dream": 1, "charm": 2, "island": 4, "magic": 3, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/369?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "真虎", "region": 1, "season": 3, "const": 1, "interest": "2,3", "specialty": 1, "dream": 1, "charm": 2, "island": 3, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/336?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "三浦慎ノ亮", "region": 2, "season": 2, "const": 4, "interest": "2,3", "specialty": "1,2", "dream": 1, "charm": 4, "island": 1, "magic": 4, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/374?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "三原健豊", "region": 1, "season": 1, "const": 2, "interest": 3, "specialty": 1, "dream": 1, "charm": 2, "island": 5, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/353?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "宮岡大愛", "region": 1, "season": 3, "const": 3, "interest": 3, "specialty": "1,3", "dream": 1, "charm": 2, "island": 1, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/334?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "宮部敬太", "region": 1, "season": 2, "const": 2, "interest": "1,3", "specialty": "4,5", "dream": 2, "charm": 1, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/354?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "宮部聡太", "region": 1, "season": 4, "const": 3, "interest": "3,5", "specialty": 5, "dream": 2, "charm": 2, "island": 5, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/355?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "元重瑛翔", "region": 2, "season": 1, "const": 4, "interest": "3,5", "specialty": 5, "dream": 1, "charm": 2, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/360?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "森ケイン", "region": 1, "season": 4, "const": 2, "interest": "2,3", "specialty": "3,4", "dream": 2, "charm": 3, "island": 2, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/394?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "山上琉偉", "region": 2, "season": 1, "const": 2, "interest": "1", "specialty": "1,2", "dream": 1, "charm": 1, "island": 5, "magic": 2, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/368?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "山岸想", "region": 1, "season": 1, "const": 4, "interest": "1,5", "specialty": "1,5", "dream": 1, "charm": 5, "island": 3, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/356?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "山崎旺夏", "region": 1, "season": 2, "const": 4, "interest": 3, "specialty": 4, "dream": 1, "charm": 1, "island": 2, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/357?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "横田大都", "region": 1, "season": 3, "const": 3, "interest": "2,5", "specialty": "1,4", "dream": 3, "charm": 2, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/358?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "上田凱吏", "region": 2, "season": 1, "const": 3, "interest": "1,2", "specialty": 1, "dream": 1, "charm": 2, "island": 1, "magic": 1, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/400?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "西原至", "region": 1, "season": 4, "const": 4, "interest": "1,5", "specialty": "1,3", "dream": 2, "charm": 2, "island": 2, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/398?ima=5318", "tiktokVideoId": "https://www.tiktok.com/@jr_official_tiktok/video/7585876876652989717" },
+      { "姓名": "浅井乃我", "region": 1, "season": 4, "const": 3, "interest": "1,2", "specialty": 5, "dream": 1, "charm": 5, "island": 5, "magic": 5, "job": 3, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/401?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "池田陸斗", "region": 5, "season": 4, "const": 3, "interest": "1,2", "specialty": 5, "dream": 1, "charm": 5, "island": 5, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/414?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "出雲颯空", "region": 1, "season": 2, "const": 3, "interest": "1,3", "specialty": 4, "dream": 1, "charm": 1, "island": 2, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/402?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "今江翔", "region": 5, "season": 4, "const": 1, "interest": "1,2", "specialty": "1,3", "dream": 2, "charm": 2, "island": 5, "magic": 4, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/415?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "江口煌真", "region": 1, "season": 3, "const": 2, "interest": "1,3", "specialty": "1,4", "dream": 1, "charm": 2, "island": 1, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/403?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "川上楓愛", "region": 2, "season": 3, "const": 2, "interest": "3,5", "specialty": "2,5", "dream": 1, "charm": 2, "island": 1, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/416?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "川津レオン", "region": 5, "season": 2, "const": 1, "interest": "1,2", "specialty": 1, "dream": 3, "charm": 4, "island": 4, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/404?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "小森ラリマール世界", "region": 1, "season": 4, "const": 1, "interest": 1, "specialty": "1,3", "dream": 3, "charm": 1, "island": 5, "magic": 1, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/406?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "佐藤凛空", "region": 2, "season": 1, "const": 4, "interest": "1,3", "specialty": "1,3", "dream": 1, "charm": 2, "island": 1, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/417?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "高谷弦汰", "region": 1, "season": 3, "const": 1, "interest": "4,5", "specialty": 4, "dream": 1, "charm": 2, "island": 1, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/407?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "田口寛晃", "region": 1, "season": 1, "const": 1, "interest": 4, "specialty": "1,5", "dream": 1, "charm": 2, "island": 4, "magic": 1, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/408?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "竹田湊", "region": 1, "season": 3, "const": 3, "interest": 3, "specialty": "1,2", "dream": 2, "charm": 2, "island": 3, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/409?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "玉城琉衣", "region": 1, "season": 2, "const": 1, "interest": "3,5", "specialty": 4, "dream": 3, "charm": 2, "island": 5, "magic": 4, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/410?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "鳥居桜丞", "region": 1, "season": 1, "const": 3, "interest": "1,5", "specialty": "3,5", "dream": 3, "charm": 2, "island": 1, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/411?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "中須賀湊登", "region": 2, "season": 3, "const": 3, "interest": 3, "specialty": "1,5", "dream": 1, "charm": 2, "island": 5, "magic": 2, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/418?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "中野英司", "region": 2, "season": 3, "const": 1, "interest": "2,5", "specialty": 1, "dream": 3, "charm": 3, "island": 5, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/419?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "梨子木憐", "region": 1, "season": 3, "const": 1, "interest": "2,3", "specialty": 2, "dream": 3, "charm": 4, "island": 4, "magic": 3, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/412?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "廣末裕理", "region": 1, "season": 1, "const": 2, "interest": "3,4", "specialty": "1,4", "dream": 5, "charm": 2, "island": 4, "magic": 3, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/420?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "松浦栞大", "region": 1, "season": 1, "const": 4, "interest": "1,3", "specialty": 5, "dream": 1, "charm": 5, "island": 1, "magic": 1, "job": "1,2,3,4,5",  "profileUrl": "https://jr-official.starto.jp/s/jr/persons/413?ima=5318", "tiktokVideoId": ""  },
+      { "姓名": "山庄司蒼偉", "region": 2, "season": 4, "const": 3, "interest": 5, "specialty": "1,4", "dream": 3, "charm": 2, "island": 3, "magic": 5, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/421?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "山田輝虎", "region": 5, "season": 4, "const": 2, "interest": "3,5", "specialty": "1,4", "dream": 3, "charm": 1, "island": 4, "magic": 5, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/422?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "鹿島榮人", "region": 2, "season": 3, "const": 4, "interest": 3, "specialty": 4, "dream": 1, "charm": 1, "island": 1, "magic": 5, "job": 1, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/423?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "小松原頼安", "region": 3, "season": 2, "const": 1, "interest": 3, "specialty": "3,4", "dream": 1, "charm": 4, "island": 5, "magic": 1, "job": 4, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/405?ima=5318", "tiktokVideoId": "" },
+      { "姓名": "山本湊翔", "region": 1, "season": 3, "const": 4, "interest": "1,3", "specialty": "4,5", "dream": 2, "charm": 2, "island": 1, "magic": 3, "job": 2, "profileUrl": "https://jr-official.starto.jp/s/jr/persons/424?ima=5318", "tiktokVideoId": "" }
+    ];
+
+    // 题目列表
+    const questions = [
+      { field: "q1_region", title: "Q1. 领养到蛋啦♪ 你认为下面哪种环境更适合蛋的破壳出生？", options: [{ text: "A. 繁华喧嚣的大都市圈", val: 1 }, { text: "B. 人情浓厚的热闹街町", val: 2 }, { text: "C. 安静宁和的静谧北国", val: 3 }, { text: "D. 海风吹拂的南方岛屿", val: 4 }, { text: "E. 底蕴深厚的历史古都", val: 5 }] },
+      { field: "q2_season", title: "Q2. 蛋壳第一次微微颤动！还记得是在什么时候吗？", options: [{ text: "A. 万物复苏的清晨", val: 1 }, { text: "B. 挥洒汗水的正午", val: 2 }, { text: "C. 适合思考的黄昏", val: 3 }, { text: "D. 安静清冷的深夜", val: 4 }] },
+      { field: "q3_const", title: "Q3. 对着流星许下愿望：你希望这颗蛋拥有怎样的灵魂品质？", options: [{ text: "A. 情感丰富的小黏人精：同理心强、注重直觉与羁绊", val: 1 }, { text: "B. 懂事踏实的小管家：脚踏实地、追求稳定与秩序", val: 2 }, { text: "C. 自由独立的小好奇：不喜欢被束缚，精神世界丰富", val: 3 }, { text: "D. 冲劲十足的小勇士：行动力满点，充满冲劲与野心", val: 4 }] },
+      { field: "q4_interest1", title: "Q4. 陪伴也是成长必要的养分✨️在家里的休闲时刻，你愿意带着蛋去干什么呢？", options: [{ text: "A. 安静地看看书籍或电影，偶尔也玩游戏", val: 1 }, { text: "B. 做道拿手好菜，捣鼓些创意小手作", val: 2 }, { text: "C. 在客厅上蹿下跳，跟着音乐瞎蹦跶", val: 3 }, { text: "D. 摆弄家里的新奇小配件，翻翻杂志报纸", val: 4 }, { text: "E. 沉浸在自己的领域展开，收集一堆奇奇怪怪的东西", val: 5 }] },
+      { field: "q5_interest2", title: "Q5. 要呼吸新鲜空气才能茁壮成长！带蛋出门放风时，他让你印象最深刻的行为是？", options: [{ text: "A. 在江畔漫步时，乖乖地陪你观察周遭的风景与行人", val: 1 }, { text: "B. 发现新奇的东西会撞撞你，提醒你拍照记下来", val: 2 }, { text: "C. 看到在草坪上撒欢的小狗时，会激动地撞击蛋壳", val: 3 }, { text: "D. 坐进新开的甜品店里，会把自己调整到最适合拍探店写真的角度", val: 4 }, { text: "E. 喜欢滚进草丛中cos形状奇特的石头，假装自己是“神秘宝藏”", val: 5 }] },
+      { field: "q6_specialty1", title: "Q6. 在蛋壳里也能听到外界的声音哦🎵你会给他挑选什么电视节目进行胎教呢？", options: [{ text: "A. 爱抖露kirakira的音乐番组！珍藏的控碟任蛋挑选", val: 1 }, { text: "B. 深探民间匠人的纪录片！蛋生在世要掌握一门手艺", val: 2 }, { text: "C. 天才云集的quiz番组！蛋酱这次你一定要上东大", val: 3 }, { text: "D. 甲子园NBA相扑比赛！蛋儿略傻但蛋儿有劲", val: 4 }, { text: "E. 传说中的M-1漫才大赛！装傻吐槽蛋总得学会一个吧", val: 5 }] },
+      { field: "q7_specialty2", title: "Q7. 在哪跌倒就在哪爬起！在外面受了委屈或遇到困难时，你希望蛋会怎么应对呢？", options: [{ text: "A. 依靠气场，挺起胸膛，绝不轻易气馁", val: 1 }, { text: "B. 默默打磨，反复复盘，直到把事彻底做好", val: 2 }, { text: "C. 理智分析，冷静下来，提供最理性的破局策略", val: 3 }, { text: "D. 猛冲破局，化沮丧为力量，大不了再试一次", val: 4 }, { text: "E. 奇思妙想，用意想不到的独特视角打破僵局", val: 5 }] },
+      { field: "q8_dream", title: "Q8. 平安破壳前去神社祈愿🙏蛋会在绘马上写下什么呢？", options: [{ text: "A. 站上最大最亮眼的舞台，成为闪耀亮眼的顶级存在", val: 1 }, { text: "B. 给支持和陪伴自己的人带去温暖、治愈与力量", val: 2 }, { text: "C. 在某个专业领域或岗位上做出自己的代表作", val: 3 }, { text: "D. 平平安安、自由自在地享受每一天的生活", val: 4 }, { text: "E. 不受世俗框架束缚，活出奇幻的独特蛋生", val: 5 }] },
+      { field: "q9_charm", title: "Q9. 第N次首提在蛋群里找到家蛋的故事：一眼终身是因为什么你？", options: [{ text: "A. 精致优雅的气质，感觉蛋身曲线无比优美", val: 1 }, { text: "B. 软萌治愈的感觉，竟能生得如此圆圆滚滚", val: 2 }, { text: "C. 皮实挺拔的身姿，往蛋堆里一杵充满力量", val: 3 }, { text: "D. 内在沉稳的姿态，自带令人安心的包容感", val: 4 }, { text: "E. 意想不到的反差，不是很圆但能滚得最远", val: 5 }] },
+      { field: "q10_island", title: "Q10. 要去野外夏令营磨炼蛋的意志！只允许带一件自选物品，你偷偷拉开书包一看发现了什么？", options: [{ text: "A. 求生刀、打火机或净水器等实用工具", val: 1 }, { text: "B. 一本厚厚的《荒岛求生百科》或技术指南", val: 2 }, { text: "C. 陪伴很久的玩偶、乐器或重要合影", val: 3 }, { text: "D. 大量零食、漫画和一部掌上游戏机", val: 4 }, { text: "E. 最可靠的同伴（缩小版）或者不知道从哪淘来的奇特符咒", val: 5 }] },
+      { field: "q11_magic", title: "Q11. 蛋のMAGIC❇️神明要赐给此蛋一种超能力，它会滚去领取哪样呢？", options: [{ text: "A. 瞬间移动、时间暂停或飞翔的能力", val: 1 }, { text: "B. 消除病痛疲劳、抚平伤痛的情绪治愈术", val: 2 }, { text: "C. 和世间万物沟通或完美理解的能力", val: 3 }, { text: "D. 凭空变出需要的东西、改变运行规则的力量", val: 4 }, { text: "E. 让食物变美味、身体变大变小等奇妙的生活魔法", val: 5 }] },
+      { field: "q12_job", title: "Q12. 除了日常学习，兴趣特长也不能落下！你倾向于给蛋报哪种兴趣班呢？", options: [{ text: "A. 戏剧/配音班：练习台词，磨炼演技，抓住粉丝的心", val: 1 }, { text: "B. 模特/造型班：学习走秀、平面拍摄或审美穿搭", val: 2 }, { text: "C. 小小播音员：练习语言表达，找到最自然的声线", val: 3 }, { text: "D. 大喜利合宿：参加集训，成为综艺大魔王", val: 4 }, { text: "E. 幕后创作班：学习词曲创作或节目幕后编导", val: 5 }] }
+    ];
+
+    let currentStep = 0;
+    const userAnswers = {};
+
+    function renderQuestion() {
+      const q = questions[currentStep];
+      document.getElementById('question-title').innerText = q.title;
+      document.getElementById('question-count').innerText = `${currentStep + 1} / ${questions.length}`;
+
+      const progress = ((currentStep + 1) / questions.length) * 100;
+      document.getElementById('progress-inner').style.width = `${progress}%`;
+
+      const optionsList = document.getElementById('options-list');
+      optionsList.innerHTML = '';
+
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerText = opt.text;
+        btn.onclick = () => selectOption(q.field, opt.val);
+        optionsList.appendChild(btn);
+      });
+
+      document.getElementById('prev-btn').disabled = currentStep === 0;
+    }
+
+    function selectOption(field, val) {
+      userAnswers[field] = val;
+      if (currentStep < questions.length - 1) {
+        currentStep++;
+        renderQuestion();
+      } else {
+        const results = calculateMatch();
+        showResults(results);
+      }
+    }
+
+    function prevQuestion() {
+      if (currentStep > 0) {
+        currentStep--;
+        renderQuestion();
+      }
+    }
+
+    // 算分逻辑
+    function calculateMatch() {
+      const maxScore = 120;
+      const isMatch = (charAttr, userVal) => {
+        if (charAttr === undefined || charAttr === null) return false;
+        if (typeof charAttr === 'string') {
+          const attrArr = charAttr.split(',').map(Number);
+          return attrArr.includes(userVal);
+        }
+        return Number(charAttr) === Number(userVal);
+      };
+
+      const results = charactersData.map(char => {
+        let score = 0;
+
+        if (isMatch(char.region, userAnswers.q1_region)) score += 10;
+        if (isMatch(char.season, userAnswers.q2_season)) score += 10;
+        if (isMatch(char.const, userAnswers.q3_const)) score += 10;
+        if (isMatch(char.interest, userAnswers.q4_interest1)) score += 5;
+        if (isMatch(char.interest, userAnswers.q5_interest2)) score += 5;
+        if (isMatch(char.specialty, userAnswers.q6_specialty1)) score += 5;
+        if (isMatch(char.specialty, userAnswers.q7_specialty2)) score += 5;
+        if (isMatch(char.dream, userAnswers.q8_dream)) score += 10;
+        if (isMatch(char.charm, userAnswers.q9_charm)) score += 10;
+        if (isMatch(char.island, userAnswers.q10_island)) score += 10;
+        if (isMatch(char.magic, userAnswers.q11_magic)) score += 10;
+        if (isMatch(char.job, userAnswers.q12_job)) score += 10;
+
+        const matchPercentage = Math.round((score / maxScore) * 100);
+
+        return {
+          name: char.姓名,
+          score: score,
+          matchPercentage: matchPercentage,
+          profileUrl: char.profileUrl,
+          tiktokVideoId: char.tiktokVideoId
+        };
+      });
+
+      results.sort((a, b) => b.score - a.score);
+      return results;
+    }
+
+    function showResults(results) {
+      if (!results || results.length === 0) return;
+      const topMember = results[0];
+
+      // 1. 设置蛋中央的头像与最高匹配度信息
+      const topAvatar = document.getElementById('top-avatar');
+      if (topAvatar) {
+        topAvatar.style.display = 'block';
+        topAvatar.src = `images/${topMember.name}.jpg`;
+        topAvatar.alt = topMember.name;
+      }
+
+      if (document.getElementById('top-name')) {
+        document.getElementById('top-name').innerText = topMember.name;
+      }
+
+      if (document.getElementById('top-percentage')) {
+        document.getElementById('top-percentage').innerText = topMember.matchPercentage;
+      }
+
+      // 2. 设置个人资料跳转按钮
+      const profileBtn = document.getElementById('profile-link');
+      if (profileBtn) {
+        profileBtn.innerText = `📖 查看 ${topMember.name} 的完整个人资料`;
+        profileBtn.href = topMember.profileUrl || '#';
+      }
+
+    // 3. 渲染 TikTok 视频预览
+const tiktokContainer = document.getElementById('tiktok-embed-container');
+if (tiktokContainer) {
+  if (topMember.tiktokVideoId) {
+    // 自动兼容：无论填的是完整 URL 还是纯 ID 都能处理
+    let videoId = topMember.tiktokVideoId;
+    if (videoId.includes('tiktok.com')) {
+      const match = videoId.match(/\/video\/(\d+)/);
+      if (match) videoId = match[1];
+    }
+
+    // 重新写入包含规范 blockquote 的容器
+    tiktokContainer.innerHTML = `
+      <blockquote class="tiktok-embed" 
+                  cite="https://www.tiktok.com/video/${videoId}" 
+                  data-video-id="${videoId}" 
+                  style="max-width: 325px; min-width: 280px; margin: 0 auto;">
+        <section>
+          <a target="_blank" href=" ">加载中...如果未显示请点击直接观看</a >
+        </section>
+      </blockquote>
+    `;
+
+    // 动态移除旧脚本并重新加载 SDK，确保每次切页都能重新触发渲染
+    const oldScript = document.getElementById('tiktok-embed-script');
+    if (oldScript) {
+      oldScript.remove();
+    }
+
+    const script = document.createElement('script');
+    script.id = 'tiktok-embed-script';
+    script.src = "https://www.tiktok.com/embed.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+  } else {
+    tiktokContainer.innerHTML = `<div style="color:#a0aec0; font-size:12px; padding:20px; text-align:center;">暂无推荐视频</div>`;
+  }
+}
+
+
+      // 4. 渲染 TOP 5 榜单
+      const rankingList = document.getElementById('ranking-list');
+      if (rankingList) {
+        rankingList.innerHTML = ''; 
+
+        const titleDiv = document.createElement('div');
+        titleDiv.style.cssText = 'font-weight:600; margin-bottom:12px; color:#4a5568;';
+        titleDiv.innerText = '完整的契合度 TOP 5：';
+        rankingList.appendChild(titleDiv);
+
+        results.slice(0, 5).forEach((item, index) => {
+          const row = document.createElement('div');
+          row.className = 'ranking-item';
+
+          const leftBox = document.createElement('div');
+          leftBox.style.cssText = 'display:flex; align-items:center;';
+
+          const rankSpan = document.createElement('span');
+          rankSpan.style.cssText = 'margin-right:8px; font-weight:600; color:#718096;';
+          rankSpan.innerText = `TOP ${index + 1}`;
+
+          const img = document.createElement('img');
+          img.className = 'ranking-avatar';
+          img.src = `images/${item.name}.jpg`;
+          img.alt = item.name;
+          img.onerror = function() { this.style.display = 'none'; };
+
+          const nameSpan = document.createElement('span');
+          nameSpan.innerText = item.name;
+
+          leftBox.appendChild(rankSpan);
+          leftBox.appendChild(img);
+          leftBox.appendChild(nameSpan);
+
+          const scoreSpan = document.createElement('span');
+          scoreSpan.style.cssText = 'font-weight:600; color:#3182ce;';
+          scoreSpan.innerText = `${item.matchPercentage}%`;
+
+          row.appendChild(leftBox);
+          row.appendChild(scoreSpan);
+
+          rankingList.appendChild(row);
+        });
+      }
+
+      // 5. 切换页面显示
+      document.getElementById('quiz-page').classList.remove('active');
+      document.getElementById('result-page').classList.add('active');
+    }
+
+    function restartQuiz() {
+      currentStep = 0;
+      for (let key in userAnswers) delete userAnswers[key];
+      document.getElementById('result-page').classList.remove('active');
+      document.getElementById('quiz-page').classList.add('active');
+      renderQuestion();
+    }
+
+    // 初始化第一题
+    renderQuestion();
+  </script>
+</body>
+</html>
